@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Tracker Ultimate</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;background:#0f172a;color:white;margin:0}
+.container{max-width:900px;margin:auto;padding:20px}
+.card{background:#1e293b;padding:15px;border-radius:15px;margin-bottom:10px}
+button{padding:10px;border:none;border-radius:10px;margin-top:5px;cursor:pointer}
+.add{background:#22c55e}
+.reset{background:#ef4444;color:white}
+input{padding:10px;border-radius:10px;border:none;width:100%;margin:5px 0}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🚀 Work Tracker Ultimate</h1>
+
+<div class="card" id="loginBox">
+<h3>👥 Login / Register</h3>
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
+<button class="add" onclick="login()">Login</button>
+<button onclick="register()">Register</button>
+</div>
+
+<div id="app" style="display:none">
+
+<div class="card">
+🎯 เป้าหมายรายวัน: <input id="goal" placeholder="เช่น 100">
+<button onclick="saveGoal()">บันทึก</button>
+<p>เป้า: <span id="goalShow">0</span> บาท</p>
+</div>
+
+<div class="card">
+🎬 TikTok +5 <button class="add" onclick="add(5)">+1</button><br>
+📺 YouTube +10 <button class="add" onclick="add(10)">+1</button><br>
+💬 Comment 10% <button class="add" onclick="addPercent()">+1</button>
+</div>
+
+<div class="card">
+💰 เงิน: <span id="money">0</span>
+<p>วันนี้: <span id="daily">0</span></p>
+</div>
+
+<div class="card">
+<canvas id="chart"></canvas>
+</div>
+
+<button class="reset" onclick="logout()">Logout</button>
+
+</div>
+</div>
+
+<script>
+let currentUser=null;
+
+function getUsers(){return JSON.parse(localStorage.getItem('users')||'{}')}
+function saveUsers(u){localStorage.setItem('users',JSON.stringify(u))}
+
+function register(){
+ let u=user.value,p=pass.value;
+ let users=getUsers();
+ if(users[u]) return alert('มีแล้ว');
+ users[u]={money:0,history:[],goal:0};
+ saveUsers(users);
+ alert('สมัครสำเร็จ');
+}
+
+function login(){
+ let u=user.value,p=pass.value;
+ let users=getUsers();
+ if(!users[u]) return alert('ไม่มี');
+ currentUser=u;
+ loginBox.style.display='none';
+ app.style.display='block';
+ load();
+}
+
+function load(){
+ let d=getUsers()[currentUser];
+ money.innerText=d.money;
+ goalShow.innerText=d.goal||0;
+ updateDaily();
+ drawChart();
+}
+
+function save(){
+ let users=getUsers();
+ users[currentUser]=data;
+ saveUsers(users);
+}
+
+function add(val){
+ let users=getUsers();
+ let d=users[currentUser];
+ d.money+=val;
+ d.history.push({date:new Date(),amount:val});
+ saveUsers(users);
+ load();
+}
+
+function addPercent(){
+ let users=getUsers();
+ let d=users[currentUser];
+ let earn=d.money*0.1;
+ d.money+=earn;
+ d.history.push({date:new Date(),amount:earn});
+ saveUsers(users);
+ load();
+}
+
+function updateDaily(){
+ let d=getUsers()[currentUser];
+ let today=new Date().toDateString();
+ let sum=0;
+ d.history.forEach(i=>{
+ if(new Date(i.date).toDateString()==today) sum+=i.amount;
+ });
+ daily.innerText=sum.toFixed(2);
+}
+
+function saveGoal(){
+ let users=getUsers();
+ users[currentUser].goal=Number(goal.value);
+ saveUsers(users);
+ load();
+}
+
+function drawChart(){
+ let d=getUsers()[currentUser];
+ let map={};
+ d.history.forEach(i=>{
+ let day=new Date(i.date).toLocaleDateString();
+ map[day]=(map[day]||0)+i.amount;
+ });
+ let labels=Object.keys(map);
+ let dataVals=Object.values(map);
+ new Chart(document.getElementById('chart'),{
+ type:'line',
+ data:{labels:labels,datasets:[{label:'รายได้',data:dataVals}]}
+ });
+}
+
+function logout(){location.reload()}
+</script>
+
+</body>
+</html>
