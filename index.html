@@ -58,22 +58,20 @@ Comment <button class="add" onclick="add('comment',0)">+1</button>
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyBLJmR...",
+  apiKey: "AIzaSyBLJnMRa41bnWWkZlJ4WHdNnMdnCdl2qGc",
   authDomain: "work-tracker-969d6.firebaseapp.com",
   projectId: "work-tracker-969d6",
-  storageBucket: "work-tracker-969d6.appspot.com",
+  storageBucket: "work-tracker-969d6.firebasestorage.app",
   messagingSenderId: "1005382872797",
-  appId: "1:1005382872797:web:586c1619e3adb..."
+  appId: "1:1005382872797:web:586c1619e3adbf81d57534"
 };
 
 firebase.initializeApp(firebaseConfig);
 
 const db = firebase.firestore();
 const storage = firebase.storage();
-
-let today = {tiktok:0,youtube:0,comment:0,money:0};
-let images = [];
-
+</script>
+  
 // เพิ่มงาน
 function add(type,val){
   today[type]++;
