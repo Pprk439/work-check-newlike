@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Work Tracker PRO MAX</title>
+<title>Work Tracker PRO MAX+</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body{margin:0;font-family:Arial;background:#0f172a;color:#fff}
-.container{max-width:900px;margin:auto;padding:20px}
+.container{max-width:1000px;margin:auto;padding:20px}
 .card{background:#1e293b;padding:16px;border-radius:16px;margin-bottom:12px}
 h1{text-align:center}
 button{padding:10px;border:none;border-radius:10px;margin:5px;cursor:pointer}
@@ -15,33 +17,26 @@ button{padding:10px;border:none;border-radius:10px;margin:5px;cursor:pointer}
 .save{background:#3b82f6;color:#fff}
 .copy{background:#f59e0b}
 input{padding:10px;border-radius:10px;border:none;width:100%;margin:5px 0}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.row .card{flex:1}
-.big{font-size:22px}
+.preview img{width:80px;height:80px;object-fit:cover;border-radius:10px;margin:5px}
+.scroll{max-height:200px;overflow:auto}
 </style>
 </head>
+
 <body>
 <div class="container">
-<h1>🚀 Work Tracker PRO MAX</h1>
-
-<div class="card" id="loginBox">
-<input id="user" placeholder="Username">
-<button onclick="login()">Login</button>
-<button onclick="register()">Register</button>
-</div>
-
-<div id="app" style="display:none">
-
-<div class="card">
-🎯 เป้ารายวัน <input id="goal" placeholder="เช่น 100">
-<p>เป้า: <span id="goalShow">0</span></p>
-</div>
+<h1>📸 Work Tracker PRO MAX+</h1>
 
 <div class="card">
 <h3>📅 งานวันนี้</h3>
+
 TikTok <button class="add" onclick="add('tiktok',5)">+1</button>
 YouTube <button class="add" onclick="add('youtube',10)">+1</button>
 Comment <button class="add" onclick="add('comment',0)">+1</button>
+
+<h4>📸 แนบรูปหลักฐาน</h4>
+<input type="file" multiple accept="image/*" onchange="uploadImages(this.files)">
+<div class="preview scroll" id="preview"></div>
+
 <br>
 <button class="save" onclick="saveDay()">💾 บันทึกวันนี้</button>
 <button class="copy" onclick="copyReport()">📤 คัดลอกรายงาน</button>
@@ -51,95 +46,87 @@ Comment <button class="add" onclick="add('comment',0)">+1</button>
 <p>TikTok: <span id="tiktok">0</span></p>
 <p>YouTube: <span id="youtube">0</span></p>
 <p>Comment: <span id="comment">0</span></p>
-<p class="big">💰 เงิน: <span id="money">0</span></p>
-<p>🎯 เป้า: <span id="progress">0%</span></p>
-</div>
-
-<div class="card">
-<canvas id="chart"></canvas>
+<p>💰 เงิน: <span id="money">0</span></p>
 </div>
 
 </div>
-</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
 <script>
-let currentUser=null;
-let today={tiktok:0,youtube:0,comment:0,money:0};
+const firebaseConfig = {
+  apiKey: "AIzaSyBLJmR...",
+  authDomain: "work-tracker-969d6.firebaseapp.com",
+  projectId: "work-tracker-969d6",
+  storageBucket: "work-tracker-969d6.appspot.com",
+  messagingSenderId: "1005382872797",
+  appId: "1:1005382872797:web:586c1619e3adb..."
+};
 
-function getUsers(){return JSON.parse(localStorage.getItem('users')||'{}')}
-function saveUsers(u){localStorage.setItem('users',JSON.stringify(u))}
+firebase.initializeApp(firebaseConfig);
 
-function register(){
- let u=user.value;
- let users=getUsers();
- users[u]={history:[],goal:0};
- saveUsers(users);
- alert('สมัครแล้ว');
-}
+const db = firebase.firestore();
+const storage = firebase.storage();
 
-function login(){
- let u=user.value;
- let users=getUsers();
- if(!users[u]) return alert('ไม่มี');
- currentUser=u;
- loginBox.style.display='none';
- app.style.display='block';
- load();
-}
+let today = {tiktok:0,youtube:0,comment:0,money:0};
+let images = [];
 
-function load(){
- let d=getUsers()[currentUser];
- goalShow.innerText=d.goal||0;
- drawChart();
-}
-
+// เพิ่มงาน
 function add(type,val){
- today[type]++;
- today.money+=val;
- updateUI();
+  today[type]++;
+  today.money += val;
+
+  document.getElementById("tiktok").innerText = today.tiktok;
+  document.getElementById("youtube").innerText = today.youtube;
+  document.getElementById("comment").innerText = today.comment;
+  document.getElementById("money").innerText = today.money;
 }
 
-function updateUI(){
- tiktok.innerText=today.tiktok;
- youtube.innerText=today.youtube;
- comment.innerText=today.comment;
- money.innerText=today.money;
+// อัปโหลดรูปขึ้น Cloud
+async function uploadImages(files){
+  document.getElementById("preview").innerHTML = "";
+  images = [];
 
- let goal=Number(goalShow.innerText)||0;
- let percent=goal? (today.money/goal*100):0;
- progress.innerText=percent.toFixed(0)+'%';
+  for(let file of files){
+    let ref = storage.ref('proof/'+Date.now()+'_'+file.name);
+    await ref.put(file);
+
+    let url = await ref.getDownloadURL();
+    images.push(url);
+
+    let img = document.createElement("img");
+    img.src = url;
+    document.getElementById("preview").appendChild(img);
+  }
+
+  alert("อัปโหลดรูปสำเร็จ");
 }
 
-function saveDay(){
- let users=getUsers();
- users[currentUser].history.push({date:new Date().toLocaleDateString(),...today});
- saveUsers(users);
- today={tiktok:0,youtube:0,comment:0,money:0};
- updateUI();
- drawChart();
- alert('บันทึกแล้ว');
+// บันทึกงาน
+async function saveDay(){
+  await db.collection("works").add({
+    ...today,
+    images: images,
+    date: new Date().toLocaleDateString()
+  });
+
+  alert("บันทึกออนไลน์แล้ว");
 }
 
+// คัดลอกรายงาน
 function copyReport(){
- let text=`📊 รายงานวันนี้\nTikTok: ${today.tiktok}\nYouTube: ${today.youtube}\nComment: ${today.comment}\n💰 เงิน: ${today.money} บาท`;
- navigator.clipboard.writeText(text);
- alert('คัดลอกแล้ว');
-}
+  let text = `📊 รายงานวันนี้
+TikTok: ${today.tiktok}
+YouTube: ${today.youtube}
+Comment: ${today.comment}
+💰 เงิน: ${today.money} บาท
+📸 รูป: ${images.length} รูป`;
 
-function drawChart(){
- let d=getUsers()[currentUser];
- if(!d) return;
- let labels=d.history.map(i=>i.date);
- let tiktokData=d.history.map(i=>i.tiktok);
- let youtubeData=d.history.map(i=>i.youtube);
-
- new Chart(document.getElementById('chart'),{
-  type:'line',
-  data:{labels:labels,datasets:[
-    {label:'TikTok',data:tiktokData},
-    {label:'YouTube',data:youtubeData}
-  ]}
- });
+  navigator.clipboard.writeText(text);
+  alert("คัดลอกแล้ว");
 }
 </script>
 
